@@ -15,7 +15,7 @@ warnings.filterwarnings("ignore")
 
 # Configuração do log
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s',
-                    handlers=[logging.FileHandler(f"results_{'removing_outliers' if remove_outliers else ''}.txt"), logging.StreamHandler()])
+                    handlers=[logging.FileHandler(f"model/results_{'removing_outliers' if remove_outliers else ''}.txt"), logging.StreamHandler()])
 
 # Log: Step 1 - Loading datasets
 logging.info("Loading datasets...")
