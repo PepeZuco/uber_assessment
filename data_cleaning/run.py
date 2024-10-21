@@ -1,5 +1,5 @@
 import logging
-from data_processing import DataProcessor
+from data_cleaning.data_processing import DataProcessor
 
 if __name__ == "__main__":
     # Configurar o logger
