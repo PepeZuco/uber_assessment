@@ -9,10 +9,13 @@ from xgboost import XGBRegressor
 import warnings
 from scipy.stats import mstats
 
+remove_outliers = True
+
 warnings.filterwarnings("ignore")
 
 # Configuração do log
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s',
+                    handlers=[logging.FileHandler(f"results_{'removing_outliers' if remove_outliers else ''}.txt"), logging.StreamHandler()])
 
 # Log: Step 1 - Loading datasets
 logging.info("Loading datasets...")
@@ -37,6 +40,15 @@ logging.info("Applying One-Hot Encoding to categorical columns...")
 categorical_cols = ['pickup_airport_code', 'dropoff_airport_code', 'pickup_day_of_the_week',
                     'pickup_hour_cat', 'rain_category_interlagos', 'rain_category_mirante']
 train_df = pd.get_dummies(train_df, columns=categorical_cols, drop_first=True)
+
+if remove_outliers:
+    logging.info("Handling outliers in the target variable...")
+    Q1 = train_df['trip_duration'].quantile(0.25)
+    Q3 = train_df['trip_duration'].quantile(0.75)
+    IQR = Q3 - Q1
+
+    # Removing outliers based on the 1.5*IQR rule
+    train_df = train_df[~((train_df['trip_duration'] < (Q1 - 1.5 * IQR)) | (train_df['trip_duration'] > (Q3 + 1.5 * IQR)))]
 
 # Log: Step 5 - Handling outliers in the target (trip_duration) using Winsorization for long trips
 logging.info("Handling outliers in the target variable for long trips using Winsorization...")
@@ -113,22 +125,24 @@ logging.info(f"Long Trip MAE: {mae_long}, R²: {r2_long}")
 # Log: Step 15 - Generating comparison plots for short and long trips
 logging.info("Generating comparison plot for short trips...")
 plt.figure(figsize=(8, 6))
-plt.scatter(np.expm1(y_val_short), y_pred_short_orig, alpha=0.5)
+plt.style.use('dark_background')  # Set the background to black
+plt.scatter(np.expm1(y_val_short), y_pred_short_orig, color='white', alpha=0.5)  # White dots
 plt.plot([np.expm1(y_val_short).min(), np.expm1(y_val_short).max()],
-         [np.expm1(y_val_short).min(), np.expm1(y_val_short).max()], '--', color='red')
-plt.title('Previsão vs Valores Reais - Short Trips (XGBRegressor)')
-plt.xlabel('Valores Reais (trip_duration)')
-plt.ylabel('Previsões (trip_duration)')
-plt.savefig('model/Graphs/short_trips_predictions.png')
+         [np.expm1(y_val_short).min(), np.expm1(y_val_short).max()], '--', color='green')  # Green line
+plt.title('Previsão vs Valores Reais - Short Trips (XGBRegressor)', color='white')
+plt.xlabel('Valores Reais (trip_duration)', color='white')
+plt.ylabel('Previsões (trip_duration)', color='white')
+plt.savefig(f"model/Graphs/short_trips_predictions_{'removing_outliers' if remove_outliers else ''}.png")
 
 logging.info("Generating comparison plot for long trips...")
 plt.figure(figsize=(8, 6))
-plt.scatter(np.expm1(y_val_long), y_pred_long_orig, alpha=0.5)
+plt.style.use('dark_background')  # Set the background to black
+plt.scatter(np.expm1(y_val_long), y_pred_long_orig, color='white', alpha=0.5)  # White dots
 plt.plot([np.expm1(y_val_long).min(), np.expm1(y_val_long).max()],
-         [np.expm1(y_val_long).min(), np.expm1(y_val_long).max()], '--', color='red')
-plt.title('Previsão vs Valores Reais - Long Trips (XGBRegressor)')
-plt.xlabel('Valores Reais (trip_duration)')
-plt.ylabel('Previsões (trip_duration)')
-plt.savefig('model/Graphs/long_trips_predictions.png')
+         [np.expm1(y_val_long).min(), np.expm1(y_val_long).max()], '--', color='green')  # Green line
+plt.title('Previsão vs Valores Reais - Long Trips (XGBRegressor)', color='white')
+plt.xlabel('Valores Reais (trip_duration)', color='white')
+plt.ylabel('Previsões (trip_duration)', color='white')
+plt.savefig(f"model/Graphs/long_trips_predictions_{'removing_outliers' if remove_outliers else ''}.png")
 
 logging.info("Process complete!")
