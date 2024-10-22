@@ -154,12 +154,6 @@ class DataProcessor:
         # Aplicar a flag de horário de pico
         self.process_rush_hour()
 
-        # Mesclar dados meteorológicos (2022 e 2023)
-        # self.merge_weather_data()
-
-        # # Processar categorias de chuva e outras variáveis relacionadas ao clima
-        # self.process_rain_features()
-
         # Limpar o dataset e salvar o resultado final em um arquivo CSV
         self.clean_and_save()
 
