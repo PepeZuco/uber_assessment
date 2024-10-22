@@ -10,11 +10,6 @@ class DataProcessor:
     def __init__(self, df_type: str, generate_sample: bool = False, sample_amount: int = None):
         self.data_path = f'data_original/latam_aa_{df_type}_data_mlops.csv'
         self.holiday_path = 'data_extra/feriados_cidade_de_sao_paulo_2022-2023.xlsx'
-        self.weather_conditions_mirante_2022 = 'data_extra/SAO PAULO - MIRANTE_2022.xlsx'
-        self.weather_conditions_mirante_2023 = 'data_extra/SAO PAULO - MIRANTE_2023.xlsx'
-        self.weather_conditions_interlagos_2022 = 'data_extra/SAO PAULO - INTERLAGOS_2022.xlsx'
-        self.weather_conditions_interlagos_2023 = 'data_extra/SAO PAULO - INTERLAGOS_2023.xlsx'
-        self.weather_2023_path = 'data_extra/dados_meteorologicos_sp_2023.xlsx'
         self.df_type = df_type
         self.df = None
         self.generate_sample = generate_sample
@@ -116,89 +111,6 @@ class DataProcessor:
             return 1 if (6 <= hour <= 9) or (17 <= hour <= 20) else 0
         self.df['is_rush_hour'] = self.df['pickup_hour'].apply(is_rush_hour)
 
-    def merge_weather_data(self):
-        logging.info("Merging with weather data...")
-
-        # Get the minimum and maximum dates from the main dataset
-        min_date = self.df['pickup_ts'].min() - pd.DateOffset(hours=3)
-        max_date = self.df['pickup_ts'].max() - pd.DateOffset(hours=3)
-
-        interlagos_2022_df = pd.read_excel(self.weather_conditions_interlagos_2022)
-        interlagos_2023_df = pd.read_excel(self.weather_conditions_interlagos_2023)
-        mirante_2022_df = pd.read_excel(self.weather_conditions_mirante_2022)
-        mirante_2023_df = pd.read_excel(self.weather_conditions_mirante_2023)
-
-        # Convert and filter weather data based on the min/max dates from the main dataset
-        for weather_df in [interlagos_2022_df, interlagos_2023_df, mirante_2022_df, mirante_2023_df]:
-            weather_df['Hora UTC'] = weather_df['Hora UTC'].str[:2].astype(int)
-            weather_df['Hora UTC'] = pd.to_timedelta(weather_df['Hora UTC'], unit='h')
-            weather_df['datetime_utc'] = pd.to_datetime(weather_df['Data']) + weather_df['Hora UTC']
-
-        # Filter weather data to only include rows between min_date and max_date
-        interlagos_2022_filtered = interlagos_2022_df[
-            (interlagos_2022_df['datetime_utc'] >= min_date) & (interlagos_2022_df['datetime_utc'] <= max_date)
-        ]
-        interlagos_2023_filtered = interlagos_2023_df[
-            (interlagos_2023_df['datetime_utc'] >= min_date) & (interlagos_2023_df['datetime_utc'] <= max_date)
-        ]
-        mirante_2022_filtered = mirante_2022_df[
-            (mirante_2022_df['datetime_utc'] >= min_date) & (mirante_2022_df['datetime_utc'] <= max_date)
-        ]
-        mirante_2023_filtered = mirante_2023_df[
-            (mirante_2023_df['datetime_utc'] >= min_date) & (mirante_2023_df['datetime_utc'] <= max_date)
-        ]
-
-        # Concatenate filtered weather data
-        interlagos_combined_df = pd.concat([interlagos_2022_filtered, interlagos_2023_filtered], ignore_index=True)
-        mirante_combined_df = pd.concat([mirante_2022_filtered, mirante_2023_filtered], ignore_index=True)
-
-        # Create the 'date_utc' column for merging
-        interlagos_combined_df['date_utc'] = interlagos_combined_df['datetime_utc'].dt.floor('H')
-        mirante_combined_df['date_utc'] = mirante_combined_df['datetime_utc'].dt.floor('H')
-
-        # Convert the pickup timestamps to UTC and floor them to the nearest hour
-        self.df['pickup_ts_utc'] = self.df['pickup_ts'] - pd.DateOffset(hours=3)
-        self.df['date_utc'] = self.df['pickup_ts_utc'].dt.floor('H')
-
-        # Merge the main dataset with the filtered weather data
-        self.df = pd.merge(self.df, interlagos_combined_df, on='date_utc', how='left', suffixes=('_interlagos', ''))
-        self.df = pd.merge(self.df, mirante_combined_df, on='date_utc', how='left', suffixes=('', '_mirante'))
-
-        logging.info("Weather data merged successfully.")
-
-    def process_rain_features(self):
-        logging.info("Categorizing rain intensity for Interlagos and Mirante...")
-
-        def categorize_rain(precipitation):
-            if precipitation == 0:
-                return 'No rain'
-            elif 0 < precipitation <= 2.5:
-                return 'Light rain'
-            elif 2.5 < precipitation <= 7.6:
-                return 'Moderate rain'
-            else:
-                return 'Heavy rain'
-
-        # Categorizar chuva para Interlagos
-        if 'PRECIPITAÇÃO TOTAL, HORÁRIO (mm)' in self.df.columns:
-            self.df['rain_category_interlagos'] = self.df['PRECIPITAÇÃO TOTAL, HORÁRIO (mm)'].apply(categorize_rain)
-
-            # Calcular acumulação de chuva em Interlagos para a última hora e as últimas 6 horas
-            logging.info("Calculating rain accumulation features for Interlagos...")
-            self.df['rain_last_hour_interlagos'] = self.df['PRECIPITAÇÃO TOTAL, HORÁRIO (mm)'].rolling(window=2, min_periods=1).sum()
-            self.df['rain_last_6_hours_interlagos'] = self.df['PRECIPITAÇÃO TOTAL, HORÁRIO (mm)'].rolling(window=6, min_periods=1).sum()
-
-        # Categorizar chuva para Mirante
-        if 'PRECIPITAÇÃO TOTAL, HORÁRIO (mm)_mirante' in self.df.columns:
-            self.df['rain_category_mirante'] = self.df['PRECIPITAÇÃO TOTAL, HORÁRIO (mm)_mirante'].apply(categorize_rain)
-
-            # Calcular acumulação de chuva em Mirante para a última hora e as últimas 6 horas
-            logging.info("Calculating rain accumulation features for Mirante...")
-            self.df['rain_last_hour_mirante'] = self.df['PRECIPITAÇÃO TOTAL, HORÁRIO (mm)_mirante'].rolling(window=2, min_periods=1).sum()
-            self.df['rain_last_6_hours_mirante'] = self.df['PRECIPITAÇÃO TOTAL, HORÁRIO (mm)_mirante'].rolling(window=6, min_periods=1).sum()
-
-        logging.info("Rain features processed successfully for both Interlagos and Mirante.")
-
     def clean_and_save(self):
         logging.info("Saving final dataset to CSV...")
 
@@ -210,8 +122,6 @@ class DataProcessor:
                            'pickup_hour', 'pickup_day_of_the_week', 'pickup_hour_cat', 'is_weekend',
                            'pickup_outside_sp', 'dropoff_outside_sp', 'hour_weekend_interaction',
                            'is_holiday', 'trip_distance_haversine', 'distance_from_center', 'is_rush_hour',
-                           'rain_category_interlagos', 'rain_last_hour_interlagos', 'rain_last_6_hours_interlagos',
-                           'rain_category_mirante', 'rain_last_hour_mirante', 'rain_last_6_hours_mirante',
                            ]]
 
         self.df.to_csv(self.output_path, index=False)
@@ -245,10 +155,10 @@ class DataProcessor:
         self.process_rush_hour()
 
         # Mesclar dados meteorológicos (2022 e 2023)
-        self.merge_weather_data()
+        # self.merge_weather_data()
 
-        # Processar categorias de chuva e outras variáveis relacionadas ao clima
-        self.process_rain_features()
+        # # Processar categorias de chuva e outras variáveis relacionadas ao clima
+        # self.process_rain_features()
 
         # Limpar o dataset e salvar o resultado final em um arquivo CSV
         self.clean_and_save()
