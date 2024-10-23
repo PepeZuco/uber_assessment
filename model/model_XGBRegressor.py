@@ -117,4 +117,40 @@ plt.xlabel('Actual Values (trip_duration)', color='white')
 plt.ylabel('Predictions (trip_duration)', color='white')
 plt.savefig(f"model/Graphs/test_predictions_22102024{'removing_outliers' if remove_outliers else ''}.png")
 
+
+# Step 15: Creating a DataFrame with actual and predicted results
+logging.info("Creating DataFrame with actual, predicted results, and difference percentage...")
+
+
+# Function to convert seconds to m:ss format
+def format_to_minutes_seconds(duration):
+    minutes = int(duration // 60)
+    seconds = int(duration % 60)
+    return f"{minutes}.{seconds:02d}"
+
+
+# Apply the function to both actual and predicted trip durations
+y_test_formatted = y_test.apply(format_to_minutes_seconds)
+y_pred_test_formatted = pd.Series(y_pred_test_orig).apply(format_to_minutes_seconds)
+
+# Calculate the percentage difference between actual and predicted values
+diff_percent = ((y_test - y_pred_test_orig) / y_test * 100).abs()
+
+# Creating a DataFrame to store the actual, predicted trip durations and the percentage difference
+results_df = pd.DataFrame({
+    'Actual (m:ss)': y_test_formatted,
+    'Predicted (m:ss)': y_pred_test_formatted,
+    'Actual (seconds)': y_test,
+    'Predicted (seconds)': y_pred_test_orig,
+    'Diff (%)': diff_percent
+})
+
+# Drop the 'Actual (seconds)' and 'Predicted (seconds)' columns if you don't need them in the final DataFrame
+# results_df.drop(columns=['Actual (seconds)', 'Predicted (seconds)'], inplace=True)
+
+# Display the first few rows of the results DataFrame
+logging.info("Displaying the first few rows of the results DataFrame...")
+
+# Saving the DataFrame to a CSV file for further analysis if needed
+results_df.to_csv('model/Graphs/test_predictions_with_diff_formatted.csv', index=False)
 logging.info("Process complete!")
