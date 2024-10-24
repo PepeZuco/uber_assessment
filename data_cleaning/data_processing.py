@@ -95,7 +95,7 @@ class DataProcessor:
         self.df['is_holiday'] = self.df['pickup_date'].isin(holidays_df['date'].dt.date).astype(int)
 
     def process_brearing(self):
-        logging.info("Adding brearing direction...")
+        logging.info("Adding bearing direction...")
 
         def calculate_bearing(lat1, lon1, lat2, lon2):
             """
@@ -182,39 +182,39 @@ class DataProcessor:
 
     def process_data(self):
         """
-        Este método orquestra todo o processo de processamento de dados e salva o resultado final.
+        This method orchestrates the entire data processing pipeline and saves the final result.
         """
-        # Carregar os dados brutos
+        # Load raw data
         self.load_data()
 
-        # Processar recursos de tempo (data e hora)
+        # Process time features (date and time)
         self.process_time_features()
 
-        # Ajustar pontos de latitude e longitude
+        # Adjust latitude and longitude points
         self.process_lat_long_data()
 
-        # Preencher valores faltantes para os códigos de aeroportos
+        # Fill missing values for airport codes
         self.process_airport_codes()
 
-        # Processar a coluna de avaliação do motorista
+        # Process driver rating column
         self.process_driver_rating()
 
-        # Aplicar flags de fim de semana e limites geográficos
+        # Apply weekend and geographic boundary flags
         self.process_flags()
 
-        # Aplicar a flag de feriado com base no dataset de feriados
+        # Apply holiday flag based on the holiday dataset
         self.process_holidays()
 
-        # Aplicar bearing direction
+        # Apply bearing direction
         self.process_brearing()
 
-        # Aplicar distancia de haversine
+        # Apply Haversine distance
         self.process_haversine_distance()
 
-        # Aplicar a flag de horário de pico
+        # Apply rush hour flag
         self.process_rush_hour()
 
-        # Limpar o dataset e salvar o resultado final em um arquivo CSV
+        # Clean the dataset and save the final result in a CSV file
         self.clean_and_save()
 
         logging.info(f"Data processing completed. Output saved to {self.output_path}")
