@@ -42,6 +42,7 @@ class DataProcessor:
         self.df['pickup_ts'] = pd.to_datetime(self.df['pickup_ts'])
         self.df['pickup_hour'] = self.df['pickup_ts'].dt.hour
         self.df['pickup_day_of_the_week'] = self.df['pickup_ts'].dt.day_name()
+        self.df['pickup_month'] = self.df['pickup_ts'].dt.month
 
         # pickup_hour into categories (e.g., morning, afternoon, evening, night)
         def categorize_hour(hour):
@@ -85,6 +86,37 @@ class DataProcessor:
         self.df['pickup_date'] = pd.to_datetime(self.df['pickup_ts']).dt.date
         self.df['is_holiday'] = self.df['pickup_date'].isin(holidays_df['date'].dt.date).astype(int)
 
+    def process_brearing(self):
+        logging.info("Adding brearing direction...")
+
+        def calculate_bearing(lat1, lon1, lat2, lon2):
+            """
+            Calculate the bearing between two points on the Earth (specified in decimal degrees).
+            """
+            # Convert latitude and longitude from degrees to radians
+            lat1 = np.radians(lat1)
+            lon1 = np.radians(lon1)
+            lat2 = np.radians(lat2)
+            lon2 = np.radians(lon2)
+
+            # Difference in the longitudes
+            dlon = lon2 - lon1
+
+            # Bearing calculation
+            x = np.sin(dlon) * np.cos(lat2)
+            y = np.cos(lat1) * np.sin(lat2) - (np.sin(lat1) * np.cos(lat2) * np.cos(dlon))
+
+            initial_bearing = np.arctan2(x, y)
+
+            # Convert from radians to degrees and normalize to 0-360
+            initial_bearing = np.degrees(initial_bearing)
+            compass_bearing = (initial_bearing + 360) % 360
+
+            return compass_bearing
+
+        self.df['direction_of_travel'] = self.df.apply(
+            lambda row: calculate_bearing(row['pick_lat'], row['pick_lng'], row['dropoff_lat'], row['dropoff_lng']), axis=1)
+
     def process_haversine_distance(self):
         logging.info("Adding haversine distance...")
 
@@ -107,9 +139,22 @@ class DataProcessor:
     def process_rush_hour(self):
         logging.info("Applying 'is_rush_hour'...")
 
+        def is_morning_rush(hour):
+            return 1 if 6 <= hour <= 9 else 0
+
+        def is_evening_rush(hour):
+            return 1 if 16 <= hour <= 19 else 0
+
+        # Step 4: Apply the new features
+        self.df['is_morning_rush_hour'] = self.df['pickup_hour'].apply(is_morning_rush)
+        self.df['is_evening_rush_hour'] = self.df['pickup_hour'].apply(is_evening_rush)
+
+        # Step 5: (Optional) Keep original rush hour feature if needed
         def is_rush_hour(hour):
             return 1 if (6 <= hour <= 9) or (17 <= hour <= 20) else 0
         self.df['is_rush_hour'] = self.df['pickup_hour'].apply(is_rush_hour)
+
+        logging.info("Rush hour features applied: 'is_morning_rush_hour', 'is_evening_rush_hour' and 'is_rush_hour'.")
 
     def clean_and_save(self):
         logging.info("Saving final dataset to CSV...")
@@ -119,9 +164,10 @@ class DataProcessor:
                            'eta', 'trip_distance', 'trip_duration',
                            'is_airport', 'pickup_airport_code', 'dropoff_airport_code',
                            'is_surged', 'surge_multiplier', 'driver_rating', 'lifetime_trips',
-                           'pickup_hour', 'pickup_day_of_the_week', 'pickup_hour_cat', 'is_weekend',
+                           'pickup_hour', 'pickup_day_of_the_week', 'pickup_hour_cat', 'is_weekend', 'pickup_month',
                            'pickup_outside_sp', 'dropoff_outside_sp', 'hour_weekend_interaction',
-                           'is_holiday', 'trip_distance_haversine', 'distance_from_center', 'is_rush_hour',
+                           'is_holiday', 'trip_distance_haversine', 'direction_of_travel',
+                           'distance_from_center', 'is_rush_hour', 'is_morning_rush_hour', 'is_evening_rush_hour'
                            ]]
 
         self.df.to_csv(self.output_path, index=False)
@@ -147,6 +193,9 @@ class DataProcessor:
 
         # Aplicar a flag de feriado com base no dataset de feriados
         self.process_holidays()
+
+        # Aplicar bearing direction
+        self.process_brearing()
 
         # Aplicar distancia de haversine
         self.process_haversine_distance()

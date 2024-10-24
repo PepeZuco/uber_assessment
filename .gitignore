@@ -1,6 +1,7 @@
 *.csv
 *.xlsx
+*.png
+*.pptx
 data_final/
 data_original/
 data_extra/
-*.png
