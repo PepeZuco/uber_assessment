@@ -56,6 +56,14 @@ class DataProcessor:
                 return 'night'
         self.df['pickup_hour_cat'] = self.df['pickup_hour'].apply(categorize_hour)
 
+    def process_lat_long_data(self):
+        logging.info("Processing Latitude and Longitude data")
+
+        self.df = self.df[(self.df['pick_lat'] < 90) & (self.df['dropoff_lat'] < 90) &
+                          (self.df['pick_lat'] > - 90) & (self.df['dropoff_lat'] > - 90) &
+                          (self.df['pick_lng'] < 180) & (self.df['dropoff_lng'] < 180) &
+                          (self.df['pick_lng'] > - 180) & (self.df['dropoff_lng'] > - 180)]
+
     def process_airport_codes(self):
         logging.info("Filling missing values for airport codes...")
         self.df['pickup_airport_code'] = self.df['pickup_airport_code'].fillna('Unknown').astype('category')
@@ -181,6 +189,9 @@ class DataProcessor:
 
         # Processar recursos de tempo (data e hora)
         self.process_time_features()
+
+        # Ajustar pontos de latitude e longitude
+        self.process_lat_long_data()
 
         # Preencher valores faltantes para os códigos de aeroportos
         self.process_airport_codes()

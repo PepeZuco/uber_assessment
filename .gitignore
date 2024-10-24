@@ -2,6 +2,7 @@
 *.xlsx
 *.png
 *.pptx
+*.gif
 data_final/
 data_original/
 data_extra/
