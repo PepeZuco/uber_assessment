@@ -1,9 +1,6 @@
-*.csv
-*.xlsx
 *.png
 *.pptx
 *.gif
 *.pyc
 data_final/
 data_original/
-data_extra/
