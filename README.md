@@ -15,6 +15,7 @@ This repository contains code and data for predicting the duration of Uber rides
   - **`model_pipeline.py`**: Handles model training and testing.
   - **`run.py`**: Runs the model pipeline, utilizing `model_pipeline.py`.
   - `Graphs/`: Stores all graphs generated during model training.
+  - `trained_model/`: Stores the model trained.
 
 - `PowerPoint/`
   - Contains a Jupyter notebook for generating graphs for presentations and a .pptx file.
