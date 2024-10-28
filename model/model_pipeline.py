@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import logging
+import joblib
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, r2_score
@@ -148,6 +149,11 @@ class ModelPipeline:
         results_df.to_csv('model/Graphs/test_predictions_with_diff_formatted.csv', index=False)
         logging.info("Process complete!")
 
+    def save_model(self, model, model_path="xgb_model.joblib"):
+        logging.info(f"Saving model to {model_path}...")
+        joblib.dump(model, model_path)
+        logging.info("Model saved successfully!")
+
     def run_pipeline(self):
         self.load_data()
         self.process_features()
@@ -155,4 +161,5 @@ class ModelPipeline:
         self.apply_log_transform()
         model = self.train_model()
         self.evaluate_model(model)
+        self.save_model(model, "model/trained_model/xgb_model.joblib")  # Save the model
         self.save_results()
